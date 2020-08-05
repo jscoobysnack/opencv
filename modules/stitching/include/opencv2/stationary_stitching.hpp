@@ -40,8 +40,8 @@
 //
 //M*/
 
-#ifndef OPENCV_STITCHING_STITCHER_HPP
-#define OPENCV_STITCHING_STITCHER_HPP
+#ifndef OPENCV_STATIONARY_STITCHING_STITCHER_HPP
+#define OPENCV_STATIONARY_STITCHING_STITCHER_HPP
 
 #include "opencv2/core.hpp"
 #include "opencv2/features2d.hpp"
@@ -59,82 +59,8 @@
 #endif
 
 
-/**
-@defgroup stitching Images stitching
-
-This figure illustrates the stitching module pipeline implemented in the Stitcher class. Using that
-class it's possible to configure/remove some steps, i.e. adjust the stitching pipeline according to
-the particular needs. All building blocks from the pipeline are available in the detail namespace,
-one can combine and use them separately.
-
-The implemented stitching pipeline is very similar to the one proposed in @cite BL07 .
-
-![stitching pipeline](StitchingPipeline.jpg)
-
-Camera models
--------------
-
-There are currently 2 camera models implemented in stitching pipeline.
-
-- _Homography model_ expecting perspective transformations between images
-  implemented in @ref cv::detail::BestOf2NearestMatcher cv::detail::HomographyBasedEstimator
-  cv::detail::BundleAdjusterReproj cv::detail::BundleAdjusterRay
-- _Affine model_ expecting affine transformation with 6 DOF or 4 DOF implemented in
-  @ref cv::detail::AffineBestOf2NearestMatcher cv::detail::AffineBasedEstimator
-  cv::detail::BundleAdjusterAffine cv::detail::BundleAdjusterAffinePartial cv::AffineWarper
-
-Homography model is useful for creating photo panoramas captured by camera,
-while affine-based model can be used to stitch scans and object captured by
-specialized devices. Use @ref cv::Stitcher::create to get preconfigured pipeline for one
-of those models.
-
-@note
-Certain detailed settings of @ref cv::Stitcher might not make sense. Especially
-you should not mix classes implementing affine model and classes implementing
-Homography model, as they work with different transformations.
-
-@{
-    @defgroup stitching_match Features Finding and Images Matching
-    @defgroup stitching_rotation Rotation Estimation
-    @defgroup stitching_autocalib Autocalibration
-    @defgroup stitching_warp Images Warping
-    @defgroup stitching_seam Seam Estimation
-    @defgroup stitching_exposure Exposure Compensation
-    @defgroup stitching_blend Image Blenders
-@}
-  */
-
 namespace cv {
 
-//! @addtogroup stitching
-//! @{
-
-/** @example samples/cpp/stitching.cpp
-A basic example on image stitching
-*/
-
-/** @example samples/python/stitching.py
-A basic example on image stitching in Python.
-*/
-
-/** @example samples/cpp/stitching_detailed.cpp
-A detailed example on image stitching
-*/
-
-/** @brief High level image stitcher.
-
-It's possible to use this class without being aware of the entire stitching pipeline. However, to
-be able to achieve higher stitching stability and quality of the final images at least being
-familiar with the theory is recommended.
-
-@note
--   A basic example on image stitching can be found at
-    opencv_source_code/samples/cpp/stitching.cpp
--   A basic example on image stitching in Python can be found at
-    opencv_source_code/samples/python/stitching.py
--   A detailed example on image stitching can be found at
-    opencv_source_code/samples/cpp/stitching_detailed.cpp
- */
 class CV_EXPORTS_W StationaryStitcher
 {
 public:
@@ -149,7 +75,7 @@ public:
     static const double ORIG_RESOL; // Initialized in stitcher.cpp
 #endif
 
-    enum Status
+    enum SStitcherStatus
     {
         OK = 0,
         ERR_NEED_MORE_IMGS = 1,
@@ -157,7 +83,7 @@ public:
         ERR_CAMERA_PARAMS_ADJUST_FAIL = 3
     };
 
-    enum Mode
+    enum SStitcherMode
     {
         /** Mode for creating photo panoramas. Expects images under perspective
         transformation and projects resulting pano to sphere.
@@ -181,7 +107,7 @@ public:
     scenario.
     @return Stitcher class instance.
      */
-    CV_WRAP static Ptr<Stitcher> create(Mode mode = Stitcher::PANORAMA);
+    CV_WRAP static Ptr<StationaryStitcher> create(SStitcherMode mode = SStitcherMode::PANORAMA);
 
     CV_WRAP double registrationResol() const { return registr_resol_; }
     CV_WRAP void setRegistrationResol(double resol_mpx) { registr_resol_ = resol_mpx; }
@@ -257,10 +183,10 @@ public:
     @param masks Masks for each input image specifying where to look for keypoints (optional).
     @return Status code.
      */
-    CV_WRAP Status estimateTransform(InputArrayOfArrays images, InputArrayOfArrays masks = noArray());
+    CV_WRAP StationaryStitcher::SStitcherStatus estimateTransform(InputArrayOfArrays images, InputArrayOfArrays masks = noArray());
 
     /** @overload */
-    CV_WRAP Status composePanorama(OutputArray pano);
+    CV_WRAP StationaryStitcher::SStitcherStatus composePanorama(OutputArray pano);
     /** @brief These functions try to compose the given images (or images stored internally from the other function
     calls) into the final pano under the assumption that the image transformations were estimated
     before.
@@ -272,10 +198,10 @@ public:
     @param pano Final pano.
     @return Status code.
      */
-    Status composePanorama(InputArrayOfArrays images, OutputArray pano);
+    StationaryStitcher::SStitcherStatus composePanorama(InputArrayOfArrays images, OutputArray pano);
 
     /** @overload */
-    CV_WRAP Status stitch(InputArrayOfArrays images, OutputArray pano);
+    CV_WRAP StationaryStitcher::SStitcherStatus stitch(InputArrayOfArrays images, OutputArray pano);
     /** @brief These functions try to stitch the given images.
 
     @param images Input images.
@@ -283,7 +209,7 @@ public:
     @param pano Final pano.
     @return Status code.
      */
-    CV_WRAP Status stitch(InputArrayOfArrays images, InputArrayOfArrays masks, OutputArray pano);
+    CV_WRAP StationaryStitcher::SStitcherStatus stitch(InputArrayOfArrays images, InputArrayOfArrays masks, OutputArray pano);
 
     std::vector<int> component() const { return indices_; }
     std::vector<detail::CameraParams> cameras() const { return cameras_; }
@@ -291,8 +217,8 @@ public:
     UMat resultMask() const { return result_mask_; }
 
 private:
-    Status matchImages();
-    Status estimateCameraParams();
+    StationaryStitcher::SStitcherStatus matchImages();
+    StationaryStitcher::SStitcherStatus estimateCameraParams();
 
     double registr_resol_;
     double seam_est_resol_;
@@ -325,19 +251,22 @@ private:
     double seam_work_aspect_;
     double warped_image_scale_;
 };
+    //@HACK: because the Python autogenerated bindings will never shut up about it.
+    typedef StationaryStitcher::SStitcherStatus SStitcherStatus;
+    typedef StationaryStitcher::SStitcherMode SStitcherMode;
 
 /**
  * @deprecated use Stitcher::create
  */
-CV_DEPRECATED Ptr<StationaryStitcher> createStitcher(bool try_use_gpu = false);
+CV_DEPRECATED Ptr<StationaryStitcher> createStationaryStitcher(bool try_use_gpu = false);
 
 /**
  * @deprecated use Stitcher::create
  */
-CV_DEPRECATED Ptr<StationaryStitcher> createStitcherScans(bool try_use_gpu = false);
+CV_DEPRECATED Ptr<StationaryStitcher> createStationaryStitcherScans(bool try_use_gpu = false);
 
 //! @} stitching
 
 } // namespace cv
 
-#endif // OPENCV_STITCHING_STITCHER_HPP
+#endif // OPENCV_STATIONARY_STITCHING_STITCHER_HPP

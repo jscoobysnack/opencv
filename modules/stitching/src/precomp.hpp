@@ -56,6 +56,7 @@
 #include "opencv2/core.hpp"
 #include "opencv2/core/ocl.hpp"
 #include "opencv2/core/utility.hpp"
+#include "opencv2/stationary_stitching.hpp"
 #include "opencv2/stitching.hpp"
 #include "opencv2/stitching/detail/autocalib.hpp"
 #include "opencv2/stitching/detail/blenders.hpp"

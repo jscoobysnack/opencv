@@ -50,7 +50,7 @@ namespace cv {
 const double StationaryStitcher::ORIG_RESOL = -1.0;
 #endif
 
-Ptr<StationaryStitcher> StationaryStitcher::create(Mode mode)
+Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherMode mode)
 {
     Ptr<StationaryStitcher> stitcher = makePtr<StationaryStitcher>();
 
@@ -99,14 +99,14 @@ Ptr<StationaryStitcher> StationaryStitcher::create(Mode mode)
 }
 
 
-StationaryStitcher::Status StationaryStitcher::estimateTransform(InputArrayOfArrays images, InputArrayOfArrays masks)
+StationaryStitcher::SStitcherStatus StationaryStitcher::estimateTransform(InputArrayOfArrays images, InputArrayOfArrays masks)
 {
     CV_INSTRUMENT_REGION();
 
     images.getUMatVector(imgs_);
     masks.getUMatVector(masks_);
 
-    Status status;
+    SStitcherStatus status;
 
     if ((status = matchImages()) != OK)
         return status;
@@ -119,7 +119,7 @@ StationaryStitcher::Status StationaryStitcher::estimateTransform(InputArrayOfArr
 
 
 
-StationaryStitcher::Status StationaryStitcher::composePanorama(OutputArray pano)
+StationaryStitcher::SStitcherStatus StationaryStitcher::composePanorama(OutputArray pano)
 {
     CV_INSTRUMENT_REGION();
 
@@ -127,7 +127,7 @@ StationaryStitcher::Status StationaryStitcher::composePanorama(OutputArray pano)
 }
 
 
-StationaryStitcher::Status StationaryStitcher::composePanorama(InputArrayOfArrays images, OutputArray pano)
+StationaryStitcher::SStitcherStatus StationaryStitcher::composePanorama(InputArrayOfArrays images, OutputArray pano)
 {
     CV_INSTRUMENT_REGION();
 
@@ -377,24 +377,24 @@ StationaryStitcher::Status StationaryStitcher::composePanorama(InputArrayOfArray
 }
 
 
-StationaryStitcher::Status StationaryStitcher::stitch(InputArrayOfArrays images, OutputArray pano)
+StationaryStitcher::SStitcherStatus StationaryStitcher::stitch(InputArrayOfArrays images, OutputArray pano)
 {
     return stitch(images, noArray(), pano);
 }
 
 
-StationaryStitcher::Status StationaryStitcher::stitch(InputArrayOfArrays images, InputArrayOfArrays masks, OutputArray pano)
+StationaryStitcher::SStitcherStatus StationaryStitcher::stitch(InputArrayOfArrays images, InputArrayOfArrays masks, OutputArray pano)
 {
     CV_INSTRUMENT_REGION();
 
-    Status status = estimateTransform(images, masks);
+    SStitcherStatus status = estimateTransform(images, masks);
     if (status != OK)
         return status;
     return composePanorama(pano);
 }
 
 
-StationaryStitcher::Status StationaryStitcher::matchImages()
+StationaryStitcher::SStitcherStatus StationaryStitcher::matchImages()
 {
     if ((int)imgs_.size() < 2)
     {
@@ -496,7 +496,7 @@ StationaryStitcher::Status StationaryStitcher::matchImages()
 }
 
 
-StationaryStitcher::Status StationaryStitcher::estimateCameraParams()
+StationaryStitcher::SStitcherStatus StationaryStitcher::estimateCameraParams()
 {
     // estimate homography in global frame
     if (!(*estimator_)(features_, pairwise_matches_, cameras_))
@@ -542,14 +542,14 @@ StationaryStitcher::Status StationaryStitcher::estimateCameraParams()
 }
 
 
-CV_DEPRECATED Ptr<StationaryStitcher> createStitcher(bool /*ignored*/)
+CV_DEPRECATED Ptr<StationaryStitcher> createStationaryStitcher(bool /*ignored*/)
 {
     CV_INSTRUMENT_REGION();
 
     return StationaryStitcher::create(StationaryStitcher::PANORAMA);
 }
 
-CV_DEPRECATED Ptr<StationaryStitcher> createStitcherScans(bool /*ignored*/)
+CV_DEPRECATED Ptr<StationaryStitcher> createStationaryStitcherScans(bool /*ignored*/)
 {
     CV_INSTRUMENT_REGION();
 

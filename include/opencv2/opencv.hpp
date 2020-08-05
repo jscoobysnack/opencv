@@ -84,6 +84,7 @@
 #endif
 #ifdef HAVE_OPENCV_STITCHING
 #include "opencv2/stitching.hpp"
+#include "opencv2/stationary_stitching.hpp"
 #endif
 #ifdef HAVE_OPENCV_VIDEO
 #include "opencv2/video.hpp"
