@@ -2,6 +2,7 @@
 
 typedef Stitcher::Status Status;
 typedef Stitcher::Mode Mode;
+typedef StationaryStitcher::StitcherOperations Operation;
 
 typedef std::vector<detail::ImageFeatures> vector_ImageFeatures;
 typedef std::vector<detail::MatchesInfo> vector_MatchesInfo;

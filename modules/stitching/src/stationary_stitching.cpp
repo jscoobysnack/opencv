@@ -50,7 +50,11 @@ namespace cv {
 const double StationaryStitcher::ORIG_RESOL = -1.0;
 #endif
 
-Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherMode mode)
+
+#include <iostream>
+#define STITCHING_MSG(msg) for(;;) { std::cout << msg; std::cout.flush(); break; }
+
+Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherMode mode, StitcherOperations operations)
 {
     Ptr<StationaryStitcher> stitcher = makePtr<StationaryStitcher>();
 
@@ -66,7 +70,7 @@ Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherMode mode)
     stitcher->work_scale_ = 1;
     stitcher->seam_scale_ = 1;
     stitcher->seam_work_aspect_ = 1;
-    stitcher->warped_image_scale_ = 1;
+    stitcher->warped_image_scale_ = 1;    
 
     switch (mode)
     {
@@ -95,6 +99,17 @@ Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherMode mode)
     break;
     }
 
+    stitcher->calibrated = false;
+    stitcher->operations = operations;
+
+    
+    STITCHING_MSG("CacheCameraParams:\t" << (int)(operations & StitcherOperations::CacheCameraParams) << std::endl);
+    STITCHING_MSG("CacheHomography:\t" << (int)(operations & StitcherOperations::CacheHomography) << std::endl);
+    STITCHING_MSG("SkipExposure:\t" << (int)(operations & StitcherOperations::SkipExposure) << std::endl);
+    STITCHING_MSG("SkipFixSeams:\t" << (int)(operations & StitcherOperations::SkipFixSeams) << std::endl);
+    STITCHING_MSG("operations:\t" << (int)(operations) << std::endl);
+
+
     return stitcher;
 }
 
@@ -108,11 +123,17 @@ StationaryStitcher::SStitcherStatus StationaryStitcher::estimateTransform(InputA
 
     SStitcherStatus status;
 
-    if ((status = matchImages()) != OK)
-        return status;
+    if(!calibrated || (operations & CacheHomography) == 0)
+    {
+        if ((status = matchImages()) != OK)
+            return status;
+    }
 
-    if ((status = estimateCameraParams()) != OK)
-        return status;
+    if(!calibrated || (operations & CacheCameraParams) == 0)
+    {
+        if ((status = estimateCameraParams()) != OK)
+            return status;
+    }
 
     return OK;
 }
@@ -202,20 +223,30 @@ StationaryStitcher::SStitcherStatus StationaryStitcher::composePanorama(InputArr
     LOGLN("Warping images, time: " << ((getTickCount() - t) / getTickFrequency()) << " sec");
 
     // Compensate exposure before finding seams
-    exposure_comp_->feed(corners, images_warped, masks_warped);
-    for (size_t i = 0; i < imgs_.size(); ++i)
-        exposure_comp_->apply(int(i), corners[i], images_warped[i], masks_warped[i]);
+    if((operations & SkipExposure) == 0)
+    {
+        exposure_comp_->feed(corners, images_warped, masks_warped);
+        for (size_t i = 0; i < imgs_.size(); ++i)
+            exposure_comp_->apply(int(i), corners[i], images_warped[i], masks_warped[i]);
+    }
 
     // Find seams
-    std::vector<UMat> images_warped_f(imgs_.size());
-    for (size_t i = 0; i < imgs_.size(); ++i)
-        images_warped[i].convertTo(images_warped_f[i], CV_32F);
-    seam_finder_->find(images_warped_f, corners, masks_warped);
+    if((operations & SkipFixSeams) == 0)
+    {
+        std::vector<UMat> images_warped_f(imgs_.size());
+        for (size_t i = 0; i < imgs_.size(); ++i)
+            images_warped[i].convertTo(images_warped_f[i], CV_32F);
+        seam_finder_->find(images_warped_f, corners, masks_warped);
+
+        images_warped_f.clear();
+    }
 
     // Release unused memory
-    seam_est_imgs_.clear();
-    images_warped.clear();
-    images_warped_f.clear();
+    if((operations & CacheHomography) == 0)
+    {
+        seam_est_imgs_.clear();
+    }
+    images_warped.clear();    
     masks.clear();
 
     LOGLN("Compositing...");
@@ -320,8 +351,11 @@ StationaryStitcher::SStitcherStatus StationaryStitcher::composePanorama(InputArr
 #endif
 
         // Compensate exposure
-        exposure_comp_->apply((int)img_idx, corners[img_idx], img_warped, mask_warped);
-        LOGLN(" compensate exposure: " << ((getTickCount() - pt) / getTickFrequency()) << " sec");
+        if((operations & SkipExposure) == 0)
+        {
+            exposure_comp_->apply((int)img_idx, corners[img_idx], img_warped, mask_warped);
+            LOGLN(" compensate exposure: " << ((getTickCount() - pt) / getTickFrequency()) << " sec");
+        }
 #if ENABLE_LOG
         pt = getTickCount();
 #endif
@@ -388,8 +422,13 @@ StationaryStitcher::SStitcherStatus StationaryStitcher::stitch(InputArrayOfArray
     CV_INSTRUMENT_REGION();
 
     SStitcherStatus status = estimateTransform(images, masks);
-    if (status != OK)
+    if (status != OK) {
+        calibrated = false;
         return status;
+    }
+
+    calibrated = true;
+
     return composePanorama(pano);
 }
 
