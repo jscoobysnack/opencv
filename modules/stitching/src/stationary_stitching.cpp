@@ -54,16 +54,28 @@ const double StationaryStitcher::ORIG_RESOL = -1.0;
 #include <iostream>
 #define STITCHING_MSG(msg) for(;;) { std::cout << msg; std::cout.flush(); break; }
 
-Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherMode mode, StitcherOperations operations)
+Ptr<StationaryStitcher> StationaryStitcher::create(bool try_gpu, SStitcherMode mode, StitcherOperations operations)
 {
+    bool use_gpu;
+    #ifdef HAVE_CUDA
+    use_gpu = (cuda::getCudaEnabledDeviceCount() > 0);
+    #else 
+    use_gpu = false;
+    #endif
+
     Ptr<StationaryStitcher> stitcher = makePtr<StationaryStitcher>();
 
     stitcher->setRegistrationResol(0.6);
     stitcher->setSeamEstimationResol(0.1);
     stitcher->setCompositingResol(ORIG_RESOL);
     stitcher->setPanoConfidenceThresh(1);
+#ifndef HAVE_CUDA
     stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinder>(detail::GraphCutSeamFinderBase::COST_COLOR));
     stitcher->setBlender(makePtr<detail::MultiBandBlender>(false));
+#else
+    stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinderGpu>(detail::GraphCutSeamFinderBase::COST_COLOR));
+    stitcher->setBlender(makePtr<detail::MultiBandBlender>(use_gpu));
+#endif
     stitcher->setFeaturesFinder(ORB::create());
     stitcher->setInterpolationFlags(INTER_LINEAR);
 
@@ -79,16 +91,20 @@ Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherMode mode, StitcherO
         stitcher->setEstimator(makePtr<detail::HomographyBasedEstimator>());
         stitcher->setWaveCorrection(true);
         stitcher->setWaveCorrectKind(detail::WAVE_CORRECT_HORIZ);
-        stitcher->setFeaturesMatcher(makePtr<detail::BestOf2NearestMatcher>(false));
+        stitcher->setFeaturesMatcher(makePtr<detail::BestOf2NearestMatcher>(use_gpu));
         stitcher->setBundleAdjuster(makePtr<detail::BundleAdjusterRay>());
+        #ifndef HAVE_CUDA
         stitcher->setWarper(makePtr<SphericalWarper>());
+        #else
+        stitcher->setWarper(makePtr<SphericalWarperGpu>());
+        #endif
         stitcher->setExposureCompensator(makePtr<detail::BlocksGainCompensator>());
     break;
 
     case SCANS:
         stitcher->setEstimator(makePtr<detail::AffineBasedEstimator>());
         stitcher->setWaveCorrection(false);
-        stitcher->setFeaturesMatcher(makePtr<detail::AffineBestOf2NearestMatcher>(false, false));
+        stitcher->setFeaturesMatcher(makePtr<detail::AffineBestOf2NearestMatcher>(false, use_gpu));
         stitcher->setBundleAdjuster(makePtr<detail::BundleAdjusterAffinePartial>());
         stitcher->setWarper(makePtr<AffineWarper>());
         stitcher->setExposureCompensator(makePtr<detail::NoExposureCompensator>());

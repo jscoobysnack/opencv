@@ -116,7 +116,7 @@ public:
     scenario.
     @return Stitcher class instance.
      */
-    CV_WRAP static Ptr<StationaryStitcher> create(SStitcherMode mode = SStitcherMode::PANORAMA, StitcherOperations operations = StitcherOperations::All);
+    CV_WRAP static Ptr<StationaryStitcher> create(bool try_gpu = false, SStitcherMode mode = SStitcherMode::PANORAMA, StitcherOperations operations = StitcherOperations::All);
 
     CV_WRAP double registrationResol() const { return registr_resol_; }
     CV_WRAP void setRegistrationResol(double resol_mpx) { registr_resol_ = resol_mpx; }
