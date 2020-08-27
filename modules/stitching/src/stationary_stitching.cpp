@@ -58,7 +58,7 @@ Ptr<StationaryStitcher> StationaryStitcher::create(bool try_gpu, SStitcherMode m
 {
     bool use_gpu;
     #ifdef HAVE_CUDA
-    use_gpu = (cuda::getCudaEnabledDeviceCount() > 0);
+    use_gpu = (cuda::getCudaEnabledDeviceCount() > 0) && try_gpu;
     #else 
     use_gpu = false;
     #endif
@@ -69,13 +69,14 @@ Ptr<StationaryStitcher> StationaryStitcher::create(bool try_gpu, SStitcherMode m
     stitcher->setSeamEstimationResol(0.1);
     stitcher->setCompositingResol(ORIG_RESOL);
     stitcher->setPanoConfidenceThresh(1);
-#ifndef HAVE_CUDA
+    #ifdef HAVE_OPENCV_CUDALEGACY
+    if(use_gpu)
+        stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinderGpu>(detail::GraphCutSeamFinderBase::COST_COLOR));
+    else
+    #endif
     stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinder>(detail::GraphCutSeamFinderBase::COST_COLOR));
-    stitcher->setBlender(makePtr<detail::MultiBandBlender>(false));
-#else
-    stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinderGpu>(detail::GraphCutSeamFinderBase::COST_COLOR));
+
     stitcher->setBlender(makePtr<detail::MultiBandBlender>(use_gpu));
-#endif
     stitcher->setFeaturesFinder(ORB::create());
     stitcher->setInterpolationFlags(INTER_LINEAR);
 
