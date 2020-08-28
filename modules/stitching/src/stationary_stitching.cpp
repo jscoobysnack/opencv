@@ -64,10 +64,10 @@ Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherOptions options, SSt
     #endif
 
     //Convert the bitflags to booleans:
-    bool useGPUOnly = options & SStitcherOptions::UseGPUOnly > 0;
-    bool useGPUWarper = useGPUOnly || options & SStitcherOptions::UseGPUWarper > 0;
-    bool useGPUFeaturesMatcher = useGPUOnly || options & SStitcherOptions::UseGPUFeaturesMatcher > 0;
-    bool useGPUBlender = useGPUOnly || options & SStitcherOptions::UseGPUBlender > 0;
+    bool useGPUOnly = options & (SStitcherOptions::UseGPUOnly > 0);
+    bool useGPUWarper = useGPUOnly || (options & SStitcherOptions::UseGPUWarper > 0);
+    bool useGPUFeaturesMatcher = useGPUOnly || (options & SStitcherOptions::UseGPUFeaturesMatcher > 0);
+    bool useGPUBlender = useGPUOnly || (options & SStitcherOptions::UseGPUBlender > 0);
 
     Ptr<StationaryStitcher> stitcher = makePtr<StationaryStitcher>();
 
