@@ -69,12 +69,12 @@ Ptr<StationaryStitcher> StationaryStitcher::create(bool try_gpu, SStitcherMode m
     stitcher->setSeamEstimationResol(0.1);
     stitcher->setCompositingResol(ORIG_RESOL);
     stitcher->setPanoConfidenceThresh(1);
-    #ifdef HAVE_OPENCV_CUDALEGACY
+    #ifdef 0
     if(use_gpu)
         stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinderGpu>(detail::GraphCutSeamFinderBase::COST_COLOR));
     else
     #endif
-    stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinder>(detail::GraphCutSeamFinderBase::COST_COLOR));
+        stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinder>(detail::GraphCutSeamFinderBase::COST_COLOR));
 
     stitcher->setBlender(makePtr<detail::MultiBandBlender>(use_gpu));
     stitcher->setFeaturesFinder(ORB::create());
