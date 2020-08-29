@@ -116,7 +116,7 @@ public:
         UseGPUWarper = 2,
         UseGPUFeaturesMatcher = 4,
         UseGPUBlender = 8,
-        UseGPUORB = 16
+        UseGPUORB = 16 // left unused.
     };
 
     /** @brief Creates a Stitcher configured in one of the stitching modes.

@@ -87,11 +87,11 @@ Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherOptions options, SSt
         stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinder>(detail::GraphCutSeamFinderBase::COST_COLOR));
 
     stitcher->setBlender(makePtr<detail::MultiBandBlender>(useGPUBlender));
-    #if defined(HAVE_CUDA)
-    stitcher->setFeaturesFinder((useGPUORB) ? cuda::ORB::create() : ORB::create());
-    #else
+    //#if defined(HAVE_CUDA)
+    //stitcher->setFeaturesFinder((useGPUORB) ? cuda::ORB::create() : ORB::create());
+    //#else
     stitcher->setFeaturesFinder(ORB::create());
-    #endif
+    //#endif
     stitcher->setInterpolationFlags(INTER_LINEAR);
 
     stitcher->work_scale_ = 1;
