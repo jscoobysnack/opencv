@@ -68,6 +68,7 @@ Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherOptions options, SSt
     bool useGPUWarper = useGPUOnly || (options & SStitcherOptions::UseGPUWarper > 0);
     bool useGPUFeaturesMatcher = useGPUOnly || (options & SStitcherOptions::UseGPUFeaturesMatcher > 0);
     bool useGPUBlender = useGPUOnly || (options & SStitcherOptions::UseGPUBlender > 0);
+    bool useGPUORB = useGPUOnly || (options & SStitcherOptions::UseGPUORB > 0);
 
     Ptr<StationaryStitcher> stitcher = makePtr<StationaryStitcher>();
 
@@ -86,7 +87,11 @@ Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherOptions options, SSt
         stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinder>(detail::GraphCutSeamFinderBase::COST_COLOR));
 
     stitcher->setBlender(makePtr<detail::MultiBandBlender>(useGPUBlender));
+    #if defined(HAVE_CUDA)
+    stitcher->setFeaturesFinder((useGPUORB) ? cuda::ORB::create() : ORB::create());
+    #else
     stitcher->setFeaturesFinder(ORB::create());
+    #endif
     stitcher->setInterpolationFlags(INTER_LINEAR);
 
     stitcher->work_scale_ = 1;
