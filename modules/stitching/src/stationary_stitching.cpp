@@ -54,17 +54,44 @@ const double StationaryStitcher::ORIG_RESOL = -1.0;
 #include <iostream>
 #define STITCHING_MSG(msg) for(;;) { std::cout << msg; std::cout.flush(); break; }
 
-Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherMode mode, StitcherOperations operations)
+Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherOptions options, SStitcherMode mode, StitcherOperations operations)
 {
+    bool use_gpu;
+    #ifdef HAVE_CUDA
+    use_gpu = (cuda::getCudaEnabledDeviceCount() > 0) && (options == SStitcherOptions::UseGPUOnly);
+    #else 
+    use_gpu = false;
+    #endif
+
+    //Convert the bitflags to booleans:
+    bool useGPUOnly = options & ((SStitcherOptions::UseGPUOnly) > 0);
+    bool useGPUWarper = useGPUOnly || ((options & SStitcherOptions::UseGPUWarper) > 0);
+    bool useGPUFeaturesMatcher = useGPUOnly || ((options & SStitcherOptions::UseGPUFeaturesMatcher) > 0);
+    bool useGPUBlender = useGPUOnly || ((options & SStitcherOptions::UseGPUBlender) > 0);
+    bool useGPUORB = useGPUOnly || ( (options & SStitcherOptions::UseGPUORB) > 0);
+
     Ptr<StationaryStitcher> stitcher = makePtr<StationaryStitcher>();
 
     stitcher->setRegistrationResol(0.6);
     stitcher->setSeamEstimationResol(0.1);
     stitcher->setCompositingResol(ORIG_RESOL);
     stitcher->setPanoConfidenceThresh(1);
-    stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinder>(detail::GraphCutSeamFinderBase::COST_COLOR));
-    stitcher->setBlender(makePtr<detail::MultiBandBlender>(false));
+    stitcher->options = options;
+
+    //@TODO: There's no seamfinder available in CUDA.
+    #if 0
+    if(use_gpu)
+        stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinderGpu>(detail::GraphCutSeamFinderBase::COST_COLOR));
+    else
+    #endif
+        stitcher->setSeamFinder(makePtr<detail::GraphCutSeamFinder>(detail::GraphCutSeamFinderBase::COST_COLOR));
+
+    stitcher->setBlender(makePtr<detail::MultiBandBlender>(useGPUBlender));
+    //#if defined(HAVE_CUDA)
+    //stitcher->setFeaturesFinder((useGPUORB) ? cuda::ORB::create() : ORB::create());
+    //#else
     stitcher->setFeaturesFinder(ORB::create());
+    //#endif
     stitcher->setInterpolationFlags(INTER_LINEAR);
 
     stitcher->work_scale_ = 1;
@@ -79,16 +106,23 @@ Ptr<StationaryStitcher> StationaryStitcher::create(SStitcherMode mode, StitcherO
         stitcher->setEstimator(makePtr<detail::HomographyBasedEstimator>());
         stitcher->setWaveCorrection(true);
         stitcher->setWaveCorrectKind(detail::WAVE_CORRECT_HORIZ);
-        stitcher->setFeaturesMatcher(makePtr<detail::BestOf2NearestMatcher>(false));
+        stitcher->setFeaturesMatcher(makePtr<detail::BestOf2NearestMatcher>(useGPUFeaturesMatcher));
         stitcher->setBundleAdjuster(makePtr<detail::BundleAdjusterRay>());
-        stitcher->setWarper(makePtr<SphericalWarper>());
+        #if defined(HAVE_CUDA)
+        if(useGPUWarper)
+            stitcher->setWarper(makePtr<SphericalWarperGpu>());
+        else
+            stitcher->setWarper(makePtr<SphericalWarper>());
+        #else
+            stitcher->setWarper(makePtr<SphericalWarper>());
+        #endif
         stitcher->setExposureCompensator(makePtr<detail::BlocksGainCompensator>());
     break;
 
     case SCANS:
         stitcher->setEstimator(makePtr<detail::AffineBasedEstimator>());
         stitcher->setWaveCorrection(false);
-        stitcher->setFeaturesMatcher(makePtr<detail::AffineBestOf2NearestMatcher>(false, false));
+        stitcher->setFeaturesMatcher(makePtr<detail::AffineBestOf2NearestMatcher>(false, useGPUFeaturesMatcher));
         stitcher->setBundleAdjuster(makePtr<detail::BundleAdjusterAffinePartial>());
         stitcher->setWarper(makePtr<AffineWarper>());
         stitcher->setExposureCompensator(makePtr<detail::NoExposureCompensator>());
@@ -585,13 +619,13 @@ CV_DEPRECATED Ptr<StationaryStitcher> createStationaryStitcher(bool /*ignored*/)
 {
     CV_INSTRUMENT_REGION();
 
-    return StationaryStitcher::create(StationaryStitcher::PANORAMA);
+    return StationaryStitcher::create(StationaryStitcher::UseCPUOnly, StationaryStitcher::PANORAMA);
 }
 
 CV_DEPRECATED Ptr<StationaryStitcher> createStationaryStitcherScans(bool /*ignored*/)
 {
     CV_INSTRUMENT_REGION();
 
-    return StationaryStitcher::create(StationaryStitcher::SCANS);
+    return StationaryStitcher::create(StationaryStitcher::UseCPUOnly, StationaryStitcher::SCANS);
 }
 } // namespace cv
